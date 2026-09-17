@@ -1,63 +1,68 @@
 # Bubble Burst
 
-一个会漂移、会碰撞、会爆炸，还会自己重新聚拢的数据驱动气泡控件。
+A data-driven bubble layout that drifts, collides, bursts, and calmly gathers itself back together.
 
-只要给每个对象提供一个名称和一个数值，数值就会映射成球体尺寸：数值越大，球越大，标签也越醒目。你可以拖它、挤它、点爆它，然后看它若无其事地重新长回来。
+Give each object a name and a number, and the number becomes its visual weight: larger values create larger bubbles and more prominent labels. Drag them, nudge them, pop them, and watch the little group make room, reflow, and grow back.
 
 ![Bubble Burst](assets/burst-and-rebirth.webp)
 
-## 它能做什么
+## What it does
 
-- 球体根据名称和数值数据自动生成
-- 每个球都有名称和数值标签
-- 球体在不可见的漏斗边界内漂移
-- 球体之间会碰撞、排斥，并允许自然重叠
-- 拖动时周围球体会实时让路
-- 松手后球体会按当前参数重新吸附、聚拢
-- 点击球体会触发同色系粒子爆炸，并自动重生
-- 爆炸、重排、重生可以连续发生
-- 图层顺序可单独刷新
-- 新成员加入后可以自动增加新的球体
+- Generates bubbles from a simple name-and-value data set
+- Scales bubble size, name size, value size, and label spacing together
+- Lets bubbles drift inside an invisible funnel-shaped boundary
+- Models collision, repulsion, and controlled overlap between bubbles
+- Pushes nearby bubbles out of the way while dragging
+- Recalculates a compact layout when values or parameters change
+- Settles bubbles back into place with a soft spring motion
+- Bursts a bubble into same-color particles, then grows it back
+- Allows repeated bursts, reflows, and rebirths
+- Lets you refresh the front-to-back layer order independently
+- Adds new bubbles naturally when new objects enter the data set
 
-![拖动与吸附](assets/drag-and-settle.webp)
+![Drag, collision, and settle](assets/drag-and-settle.webp)
 
-## 它适合什么场景
+## Where it fits
 
-Bubble Burst 不限定数据一定是“贡献度”。它更适合用来表达一组对象之间的相对规模、活跃程度或数量差异，例如：
+Bubble Burst is not tied to contribution scores. It is a small interactive visual layer for showing relative scale, activity, or quantity across a group of objects.
 
-- 团队成员贡献度、项目参与度或活跃度
-- 成员目录、角色展示和团队关系墙
-- 标签、关键词、内容热度或主题分布
-- 项目、任务、资源数量概览
-- 实时状态、通知聚合或活动看板
-- 首页、专题页中的互动式数据入口
+It can work well for:
 
-贡献度排名只是其中一个用法。它不太像一张严肃的统计表，更像一小群正在开会、互相让路、偶尔突然爆开的气泡。
+- Team contribution, participation, or activity views
+- Member directories, roles, and relationship walls
+- Tags, keywords, content heat, or topic distribution
+- Projects, tasks, resources, or inventory snapshots
+- Live status, notification, or activity clusters
+- Interactive data entry points on homepages and feature pages
 
-## 可控参数
+Contribution ranking is one possible use case—not the whole personality of the component. It behaves less like a strict table and more like a tiny group of bubbles that negotiates space, occasionally gets dramatic, and then carries on.
 
-| 参数 | 范围 | 默认值 | 作用 |
+## Tunable parameters
+
+| Parameter | Range | Default | What it changes |
 | --- | ---: | ---: | --- |
-| 球体数量 | 3–20 | 10 | 控制场内球体数量 |
-| 球体尺寸跨度 | 0–150px | 100px | 控制最大球体与最小球体之间的差距 |
-| 球体重叠程度 | 0–50% | 20% | 控制球体靠近和重叠的程度 |
-| 漏斗敞口角度 | 20–62° | 50° | 控制隐形边界的开阔程度 |
+| Bubble count | 3–20 | 10 | Number of bubbles in the scene |
+| Size span | 0–150px | 100px | Difference between the smallest and largest bubble |
+| Overlap | 0–50% | 20% | How closely bubbles can gather and overlap |
+| Funnel openness | 20–62° | 50° | How open the invisible boundary feels |
 
-球体尺寸与署名排版使用统一的半径比例计算。球变小，署名、项目数和两者间距一起变小，不会出现“小球配大字”的尴尬场面。
+The bubble radius is the single source of truth for typography. When a bubble shrinks, its name, value, and the space between them shrink with it—no tiny bubble carrying an oversized sign.
 
-![参数实时调整](assets/slider-reflow.webp)
+![Live parameter reflow](assets/slider-reflow.webp)
 
-## 操作方式
+## Interactions
 
-- 拖动球体：调整位置，松手后自动吸附回当前布局规则
-- 点击球体：爆炸并重生
-- 重新生成布局：重新计算位置、碰撞和图层
-- 刷新图层顺序：只改变球体的前后遮挡关系
-- 恢复默认：恢复默认参数并重新聚拢布局
+- Drag a bubble: nearby bubbles make room; release it to reflow and settle
+- Click a bubble: burst it into matching particles and let it grow back
+- Regenerate layout: recalculate positions, collisions, and layers
+- Refresh layer order: change only which bubbles sit in front
+- Restore defaults: reset the parameters and regroup the layout
 
-## 接入动态成员数据
+The previews above intentionally show combined behavior rather than isolated slider demos: dragging includes neighbor repulsion and release settling, resizing includes a fresh compact layout, and bursting includes particle motion plus the surrounding reflow and rebirth.
 
-控件最终只需要两类成员数据：
+## Bring your own data
+
+The component needs two values per object:
 
 ```js
 [
@@ -67,24 +72,24 @@ Bubble Burst 不限定数据一定是“贡献度”。它更适合用来表达�
 ]
 ```
 
-接入真实站点时，可以把 Demo 数据替换为站点现有的数据源。每增加一个对象，重新生成这组数据并调用布局入口，就会自动出现新的球体；数值变化时，球体尺寸和标签也会同步更新。这里的 `itemCount` 只是示例字段名，也可以映射成热度、任务数、浏览量、库存量等任意数值。
+In a real product, replace the demo array with your existing data source. Add an object and a new bubble appears; change its number and its bubble, labels, and layout weight update together. `itemCount` is only an example field name—it can represent tasks, views, mentions, inventory, activity, or any other numeric measure.
 
-## 本地运行
+## Run it locally
 
-这是一个自包含的单文件 Demo，不需要构建工具或依赖安装：
+This is a self-contained single-file demo. No build step or dependency install is required:
 
 ```bash
 open index.html
 ```
 
-也可以直接通过 GitHub Pages 发布。
+It is also ready to serve from GitHub Pages.
 
-## 文件结构
+## Files
 
 ```text
-index.html                  # 可直接打开的 Demo
-bubble-burst-v3.2.html      # 带版本语义的 Demo 副本
-assets/                     # README 中使用的 WebP 动图
+index.html                  # Openable demo
+bubble-burst-v3.2.html      # Versioned copy of the demo
+assets/                     # WebP previews used above
 ```
 
 ## Credits
