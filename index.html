@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bubble Burst — V3.2</title>
+  <style>
+    :root {
+      --ink: #111111;
+      --ink-soft: #3d3d3a;
+      --paper: #f2f3ef;
+      --lime: #eef4d8;
+      --coral: #e7edff;
+      --blue: #f4eee3;
+      --line: #deded8;
+      --line-strong: #b9b9b1;
+      --serif: ui-serif, Georgia, "Songti SC", "Noto Serif SC", serif;
+      --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--paper); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app-shell { max-width: 1180px; margin: 0 auto; padding: 28px 28px 52px; }
+    .masthead {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 28px;
+      min-height: 60px; padding: 0 0 14px; border-bottom: 1px solid rgba(17,17,17,.12); align-items: end;
+    }
+    .eyebrow, .micro-label, .control-label, .legend, .button-label {
+      letter-spacing: .08em; text-transform: uppercase; font-size: 10px; font-weight: 800;
+    }
+    .eyebrow, .dek { display: none; }
+    h1 { margin: 0; font: 400 clamp(44px, 7vw, 74px)/.9 var(--serif); letter-spacing: -.055em; }
+    .header-note { text-align: right; min-width: auto; padding: 0 0 5px; }
+    .header-note strong { display: block; color: var(--ink-soft); font: 10px var(--mono); letter-spacing: .08em; }
+    .header-note span { display: none; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 48px; padding-top: 42px; align-items: start; }
+    .stage-card { min-width: 0; transform: translateY(-28px); }
+    .stage-top { display: none; }
+    .stage-top .micro-label { color: var(--ink-soft); }
+    .live-pill { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 11px; }
+    .live-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 4px rgba(255,117,93,.14); }
+    .stage {
+      position: relative; overflow: hidden; isolation: isolate;
+      min-height: 600px; border: 1px solid var(--line); border-radius: 3px;
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+    }
+    .stage::before, .stage::after { display: none; }
+    #funnelSvg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+    #burstCanvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 25; pointer-events: none; }
+    /* The funnel remains a hard geometric constraint, but its outline is intentionally invisible. */
+    .funnel-frame { fill: transparent; stroke: transparent; stroke-width: 0; vector-effect: non-scaling-stroke; }
+    .funnel-glow, .funnel-rim, .funnel-floor { fill: none; stroke: transparent; stroke-width: 0; }
+    .funnel-tick { stroke: transparent; stroke-width: 0; }
+    .ball { cursor: grab; transition: opacity .2s ease; }
+    .ball:active { cursor: grabbing; }
+    .ball circle { stroke: rgba(17,17,17,.22); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .ball circle:nth-child(2) { display: none; }
+    .ball text { fill: var(--ink); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; letter-spacing: -.03em; }
+    .ball .ball-index { display: block; fill: var(--ink-soft); font-size: 8px; font-weight: 400; letter-spacing: 0; }
+    .ball.is-dragging { opacity: .9; }
+    .stage-caption { display: none; }
+    .stage-caption strong { display: block; color: rgba(238,240,228,.92); font-size: 13px; letter-spacing: -.02em; }
+    .stage-caption span { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+    .legend { display: flex; align-items: center; gap: 10px; color: rgba(238,240,228,.55); font-size: 9px; }
+    .legend i { width: 22px; height: 1px; background: var(--lime); display: inline-block; }
+
+    .control-panel { display: grid; grid-template-columns: 1fr; transform: translateY(28px); }
+    .action-row { grid-column: 1 / -1; }
+    .control-group { padding: 18px 0 19px; border-bottom: 1px solid var(--line); }
+    .control-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .control-label { letter-spacing: .05em; font-size: 11px; }
+    .control-value { font-weight: 900; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .control-help { display: none; }
+    input[type="range"] { appearance: none; width: 100%; height: 4px; border-radius: 10px; background: linear-gradient(90deg, var(--ink) var(--fill, 50%), rgba(17,23,22,.15) var(--fill, 50%)); outline: none; }
+    input[type="range"]::-webkit-slider-thumb { appearance: none; width: 17px; height: 17px; border: 2px solid var(--paper); border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 1px var(--ink); }
+    input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; border: 2px solid var(--paper); border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 1px var(--ink); }
+    .range-ends { display: none; }
+    .stepper { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .stepper button { width: 31px; height: 31px; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--ink); background: transparent; font-size: 20px; line-height: 1; }
+    .stepper button:hover, .stepper button:focus-visible { background: var(--lime); border-color: var(--ink); }
+    .stepper output { min-width: 56px; text-align: center; font-size: 21px; font-weight: 900; letter-spacing: -.06em; }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; row-gap: 16px; padding-top: 28px; }
+    .action-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; border: 1px solid var(--ink); border-radius: 3px; color: var(--ink); background: transparent; font-size: 12px; font-weight: 700; }
+    .action-button:hover, .action-button:focus-visible { background: rgba(17,17,17,.04); border-color: var(--line-strong); }
+    .action-button.primary { grid-column: 1 / -1; background: var(--ink); color: var(--paper); }
+    .action-button.primary:hover, .action-button.primary:focus-visible { background: rgba(17,17,17,.9); border-color: var(--ink); color: var(--paper); }
+    .button-icon { font-size: 18px; line-height: 10px; }
+    .footer-note { display: none; }
+    kbd { padding: 2px 5px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 4px; font-size: 9px; background: rgba(255,255,255,.35); }
+    :focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
+    @media (max-width: 830px) { .app-shell { padding: 18px 18px 36px; } .masthead { gap: 14px; } .workspace { grid-template-columns: 1fr; gap: 28px; } .stage-card, .control-panel { transform: none; } .stage { min-height: 530px; } .control-panel { display: grid; grid-template-columns: 1fr; } .action-row { grid-column: 1 / -1; } }
+    @media (max-width: 560px) { .masthead { display: block; padding-top: 12px; } .header-note { margin-top: 10px; text-align: left; } .stage { min-height: 470px; } .control-panel { display: block; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; } }
+  </style>
+</head>
+<body>
+  <canvas id="burstCanvas" aria-hidden="true"></canvas>
+  <main class="app-shell">
+    <header class="masthead">
+      <div>
+        <div class="eyebrow">Layout instrument / 02</div>
+        <h1>Bubble<br>Burst</h1>
+        <p class="dek">在一个有边界的容器里，让标签球体自然找到自己的位置。可以重叠，但不会彼此穿透。</p>
+      </div>
+      <div class="header-note"><strong>V3.2 · Hicy</strong></div>
+    </header>
+
+    <section class="workspace" aria-label="Bubble Burst 交互控件">
+      <section class="stage-card">
+        <div class="stage-top"><span class="micro-label">playground</span><span class="live-pill">布局实时更新</span></div>
+        <div class="stage" id="stage">
+          <svg id="funnelSvg" viewBox="0 0 860 620" role="img" aria-labelledby="stageTitle stageDesc">
+            <title id="stageTitle">漏斗容器中的随机球体</title>
+            <desc id="stageDesc">球体根据尺寸、重叠度和漏斗开口参数自动布局，可以拖拽。</desc>
+            <defs>
+              <clipPath id="funnelClip"><path id="clipPathShape" d="M 72 52 L 788 52 L 592 566 L 268 566 Z" /></clipPath>
+              <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#111" flood-opacity=".10"/></filter>
+              <filter id="innerGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="10" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <path id="funnelGlow" class="funnel-glow" d="M 72 52 L 788 52 L 592 566 L 268 566 Z" />
+            <path id="funnelFrame" class="funnel-frame" d="M 72 52 L 788 52 L 592 566 L 268 566 Z" />
+            <line class="funnel-rim" x1="72" y1="52" x2="788" y2="52" />
+            <g id="funnelTicks" opacity=".7"></g>
+            <g id="balls"></g>
+            <g id="effects" pointer-events="none"></g>
+            <line id="funnelFloor" class="funnel-floor" x1="268" y1="620" x2="592" y2="620" />
+          </svg>
+          <div class="stage-caption"><div><strong id="captionCount">08 nodes in orbit</strong><span>click to burst · drag to inspect</span></div><div class="legend"><i></i> hidden constraint</div></div>
+        </div>
+        <div class="footer-note"><span>Hint: <kbd>+</kbd> and <kbd>−</kbd> adjust nodes</span><span>Each change reshuffles the depth order</span></div>
+      </section>
+
+      <aside class="control-panel" aria-label="布局控制">
+        <div class="control-group">
+          <div class="control-head"><label class="control-label" for="countRange">球体数量</label><output id="countValue" class="control-value">10 / 20</output></div>
+          <p class="control-help">滑动数量，剩余球体会自动收拢并重新排列。</p>
+          <input id="countRange" type="range" min="3" max="20" value="10" step="1"><div class="range-ends"><span>03</span><span>20</span></div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-head"><label class="control-label" for="sizeSpan">球体尺寸跨度</label><output id="sizeSpanValue" class="control-value" for="sizeSpan">100 px</output></div>
+          <p class="control-help">控制最大球体与最小球体之间的差距。</p>
+          <input id="sizeSpan" type="range" min="0" max="150" value="100" step="1"><div class="range-ends"><span>更均匀</span><span>更戏剧化</span></div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-head"><label class="control-label" for="overlap">球体重叠程度</label><output id="overlapValue" class="control-value" for="overlap">20%</output></div>
+          <p class="control-help">允许圆形靠得更近，并同步收紧场内布局。</p>
+          <input id="overlap" type="range" min="0" max="50" value="20" step="1"><div class="range-ends"><span>不重叠</span><span>更紧密</span></div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-head"><label class="control-label" for="openness">漏斗敞口角度</label><output id="opennessValue" class="control-value" for="openness">50°</output></div>
+          <p class="control-help">调大上沿宽度；调小则让底部更快收束。</p>
+          <input id="openness" type="range" min="20" max="62" value="50" step="1"><div class="range-ends"><span>收束</span><span>开阔</span></div>
+        </div>
+
+        <div class="action-row"><button type="button" class="action-button primary" id="shuffleBtn"><span class="button-icon">↻</span> 重新生成布局</button><button type="button" class="action-button" id="orderBtn">刷新图层顺序</button><button type="button" class="action-button" id="resetBtn">恢复默认</button></div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const NS = 'http://www.w3.org/2000/svg';
+      const svg = document.getElementById('funnelSvg');
+      const ballsEl = document.getElementById('balls');
+      const effectsEl = document.getElementById('effects');
+      const burstCanvas = document.getElementById('burstCanvas');
+      const burstCtx = burstCanvas.getContext('2d');
+      const stage = document.getElementById('stage');
+      // Match the reference bubbles' default diameter range: 82px + count-based 62px span.
+      // `sizeSpan` remains the user-facing diameter span controlled by the slider.
+      const defaults = { count: 10, sizeSpan: 100, overlap: 20, openness: 50 };
+      const referenceMaxRadius = (82 + 62) / 2;
+      const COLLISION_RECOVERY_MS = 420;
+      // Weighted palette: white occupies three of nine slots, so its probability
+      // is exactly 3x that of each other color while assignment stays stable.
+      const palette = ['#E7EDFF', '#EEF4D8', '#F4EEE3', '#FFFFFF', '#FFFFFF', '#FFFFFF', '#E3F0EA', '#F8E6E1', '#ECE8F5'];
+      const demoBallData = [
+        { author: 'KiKi', itemCount: 8 },
+        { author: 'Hicy', itemCount: 4 },
+        { author: 'Mr.Glory', itemCount: 3 },
+        { author: 'Tiya', itemCount: 3 },
+        { author: '村长', itemCount: 1 },
+        { author: 'Nova', itemCount: 2 },
+        { author: 'Mori', itemCount: 2 },
+        { author: 'Echo', itemCount: 1 },
+        { author: 'Lina', itemCount: 1 },
+        { author: 'Orbit', itemCount: 1 },
+        { author: 'Pixel', itemCount: 1 },
+        { author: 'Mika', itemCount: 1 },
+        { author: 'Rin', itemCount: 1 },
+        { author: 'Kite', itemCount: 1 },
+        { author: 'Aster', itemCount: 1 },
+        { author: 'Nori', itemCount: 1 },
+        { author: 'Sora', itemCount: 1 },
+        { author: 'Flux', itemCount: 1 },
+        { author: 'Iris', itemCount: 1 },
+        { author: 'Axis', itemCount: 1 }
+      ];
+      const maxItemCount = Math.max(...demoBallData.map(item => item.itemCount));
+      let params = { ...defaults }, items = [], drag = null, changeTimer, layoutFrame = 0, motionFrame = 0, driftFrame = 0, burstFrame = 0, dragFrame = 0, ballNodes = new Map(), activeBursts = [], isTransitioning = false, driftResumeAt = 0, collisionRecoveryUntil = 0;
+
+      const $ = id => document.getElementById(id);
+      const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+      const rand = (min, max) => min + Math.random() * (max - min);
+      const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+
+      function funnel() {
+        const topY = 0, floorY = 620, center = 430;
+        const openness = params.openness;
+        const opennessRatio = clamp((openness - 20) / 42, 0, 1);
+        const topHalf = 300 + opennessRatio * 130;
+        const bottomHalf = 255 * (1 - opennessRatio);
+        return { topY, floorY, center, topHalf, bottomHalf, topL: center - topHalf, topR: center + topHalf, bottomL: center - bottomHalf, bottomR: center + bottomHalf };
+      }
+      function setFunnel() {
+        const f = funnel(), d = `M ${f.topL} ${f.topY} L ${f.topR} ${f.topY} L ${f.bottomR} ${f.floorY} L ${f.bottomL} ${f.floorY} Z`;
+        $('funnelFrame').setAttribute('d', d); $('funnelGlow').setAttribute('d', d); $('clipPathShape').setAttribute('d', d);
+        document.querySelector('.funnel-rim').setAttribute('x1', f.topL); document.querySelector('.funnel-rim').setAttribute('x2', f.topR);
+        $('funnelFloor').setAttribute('x1', f.bottomL); $('funnelFloor').setAttribute('x2', f.bottomR);
+        const ticks = $('funnelTicks'); ticks.innerHTML = '';
+        for (let i = 1; i < 6; i++) { const y = f.topY + (f.floorY-f.topY) * i/6; const t = document.createElementNS(NS, 'line'); const left = f.topL + (f.bottomL-f.topL) * i/6; const right = f.topR + (f.bottomR-f.topR) * i/6; t.setAttribute('x1', left+9); t.setAttribute('x2', right-9); t.setAttribute('y1', y); t.setAttribute('y2', y); t.setAttribute('class','funnel-tick'); ticks.appendChild(t); }
+      }
+      function seedFor(i) { return ((i * 37 + 11) % 100) / 100; }
+      function radiusFor(itemOrIndex) {
+        const itemCount = typeof itemOrIndex === 'number'
+          ? demoBallData[itemOrIndex % demoBallData.length].itemCount
+          : itemOrIndex.itemCount;
+        const scale = clamp(itemCount / Math.max(1, maxItemCount), 0, 1);
+        const diameter = 82 + scale * params.sizeSpan;
+        return diameter / 2;
+      }
+      function widthAt(y) { const f = funnel(), p = clamp((y-f.topY)/(f.floorY-f.topY), 0, 1); return { left: f.topL + (f.bottomL-f.topL)*p, right: f.topR + (f.bottomR-f.topR)*p }; }
+      function constrainBall(b, f = funnel()) {
+        // A circle must stay at least one radius away from every funnel edge.
+        // Horizontal padding (edgeX + r) is not enough for slanted edges:
+        // the required inset along x is larger by the side's normal factor.
+        const height = f.floorY - f.topY;
+        const leftDx = f.bottomL - f.topL;
+        const rightDx = f.bottomR - f.topR;
+        const leftLen = Math.hypot(leftDx, height);
+        const rightLen = Math.hypot(rightDx, height);
+        const leftNormal = { x: height / leftLen, y: -leftDx / leftLen };
+        const rightNormal = { x: -height / rightLen, y: rightDx / rightLen };
+        const leftInsetX = b.r / leftNormal.x;
+        const rightInsetX = b.r / (-rightNormal.x);
+        const taper = f.topHalf - f.bottomHalf;
+        // At the narrowest legal height, the side-edge distance at the
+        // centreline is exactly one radius. This prevents the lower arc of a
+        // large circle from being clipped by a sharply tapered funnel.
+        const maxSideP = taper > 0 ? (f.topHalf - b.r * leftLen / height) / taper : 1;
+        const maxY = Math.min(f.floorY - b.r, f.topY + height * clamp(maxSideP, 0, 1));
+        b.y = clamp(b.y, f.topY + b.r, maxY);
+        for (let i = 0; i < 10; i++) {
+          b.y = clamp(b.y, f.topY + b.r, maxY);
+          const leftDistance = (b.x - f.topL) * leftNormal.x + (b.y - f.topY) * leftNormal.y;
+          const rightDistance = (b.x - f.topR) * rightNormal.x + (b.y - f.topY) * rightNormal.y;
+          if (leftDistance < b.r) { const push = b.r - leftDistance; b.x += leftNormal.x * push; b.y += leftNormal.y * push; }
+          if (rightDistance < b.r) { const push = b.r - rightDistance; b.x += rightNormal.x * push; b.y += rightNormal.y * push; }
+        }
+        b.y = clamp(b.y, f.topY + b.r, maxY);
+        const p = clamp((b.y - f.topY) / height, 0, 1);
+        const leftEdgeX = f.topL + leftDx * p;
+        const rightEdgeX = f.topR + rightDx * p;
+        const minX = leftEdgeX + leftInsetX;
+        const maxX = rightEdgeX - rightInsetX;
+        b.x = minX <= maxX ? clamp(b.x, minX, maxX) : f.center;
+      }
+      function makeItem(i) { const data = demoBallData[i % demoBallData.length]; return { id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, name: data.author, author: data.author, itemCount: data.itemCount, sizeSeed: seedFor(i), r: radiusFor(data), x: rand(250, 610), y: rand(180, 470), color: palette[i % palette.length], layer: Math.random(), drift: rand(0, Math.PI * 2) }; }
+      function seedItems(reflow = false) { items = Array.from({ length: params.count }, (_, i) => makeItem(i)); solve(reflow); render(); }
+      function solve(reflow = false, maxPasses = 240, collisionScale = 1) {
+        const f = funnel();
+        items.forEach(b => { b.r = radiusFor(b); constrainBall(b, f); });
+        for (let pass=0; pass<maxPasses; pass++) {
+          let moved = false;
+          if (reflow) {
+            // Recalculate the composition from the new radii instead of
+            // preserving legal-but-now-too-loose coordinates. The collision
+            // pass below uses the new radii and current overlap value.
+            const targetY = f.floorY - 165;
+            for (const b of items) {
+              b.x += (f.center - b.x) * .018;
+              b.y += (targetY - b.y) * .018;
+            }
+          }
+          for (const b of items) constrainBall(b, f);
+          for (let i=0;i<items.length;i++) for (let j=i+1;j<items.length;j++) {
+            const a=items[i], b=items[j], dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy), minD=(a.r+b.r)*(1-params.overlap/100);
+            if (d < minD) { const ux=d ? dx/d : Math.cos(i*2.4), uy=d ? dy/d : Math.sin(i*2.4), push=((minD-(d||0))/2+.08)*collisionScale; a.x-=ux*push; a.y-=uy*push; b.x+=ux*push; b.y+=uy*push; moved=true; }
+          }
+          if (!moved && pass>24) break;
+        }
+        // Final boundary pass keeps every circle fully inside the current funnel.
+        items.forEach(b => constrainBall(b, f));
+      }
+      function compactAfterRemoval() {
+        // Removing a node creates room. Re-seed the remaining composition
+        // toward the funnel's lower centre so the change is spatially legible,
+        // then solve boundaries and pairwise repulsion again.
+        const f = funnel();
+        const targetY = f.floorY - 165;
+        const xFactor = .62;
+        const yFactor = .66;
+        items.forEach(b => {
+          b.x = f.center + (b.x - f.center) * xFactor;
+          b.y = targetY + (b.y - targetY) * yFactor;
+        });
+      }
+      function render() {
+        ballsEl.innerHTML = '';
+        ballNodes.clear();
+        [...items].sort((a,b)=>a.layer-b.layer).forEach((b, index) => {
+          const g=document.createElementNS(NS,'g'); g.classList.add('ball'); g.dataset.id=b.id; g.setAttribute('transform',`translate(${b.x} ${b.y})`); g.setAttribute('filter','url(#softShadow)');
+          const c=document.createElementNS(NS,'circle'); c.setAttribute('r',b.r); c.setAttribute('fill',b.color); c.setAttribute('fill-opacity',.92); 
+          const shine=document.createElementNS(NS,'circle'); shine.setAttribute('r',b.r*.78); shine.setAttribute('fill','url(#none)'); shine.setAttribute('fill','none'); shine.setAttribute('stroke','rgba(255,255,255,.18)'); shine.setAttribute('stroke-width',Math.max(1,b.r*.035));
+          const contentScale = b.r / referenceMaxRadius;
+          const content=document.createElementNS(NS,'g'); content.classList.add('ball-content'); content.setAttribute('transform',`scale(${contentScale})`);
+          const txt=document.createElementNS(NS,'text'); txt.style.fontSize='24px'; txt.setAttribute('y', -5); txt.textContent=b.author || b.name;
+          const idx=document.createElementNS(NS,'text'); idx.classList.add('ball-index'); idx.style.fontSize='10px'; idx.setAttribute('y', 17); idx.textContent=`${b.itemCount} 项`;
+          content.append(txt,idx); g.append(c,shine,content); g.addEventListener('pointerdown', startDrag); ballsEl.appendChild(g); ballNodes.set(b.id, g);
+        });
+        $('captionCount').textContent = `${String(items.length).padStart(2,'0')} nodes in orbit`;
+        $('countValue').textContent = `${String(items.length).padStart(2,'0')} / 20`;
+        const countRange = $('countRange');
+        countRange.value = items.length;
+        countRange.style.setProperty('--fill', `${(items.length - +countRange.min) / (+countRange.max - +countRange.min) * 100}%`);
+      }
+      function updateBallTransforms() {
+        items.forEach(b => { const g = ballNodes.get(b.id); if (g) g.setAttribute('transform', `translate(${b.x} ${b.y})`); });
+      }
+      function startDrift() {
+        cancelAnimationFrame(driftFrame);
+        let previous = performance.now();
+        const tick = now => {
+          const dt = Math.min((now - previous) / 1000, .034); previous = now;
+          const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          if (!reduced && items.length && !isTransitioning) {
+            const recoveryT = collisionRecoveryUntil ? clamp(1 - (collisionRecoveryUntil - now) / COLLISION_RECOVERY_MS, 0, 1) : 1;
+            const recoveryBlend = recoveryT * recoveryT * (3 - 2 * recoveryT);
+            const recoveryPasses = collisionRecoveryUntil ? Math.max(1, Math.ceil(1 + 7 * recoveryBlend)) : 8;
+            const recoveryScale = collisionRecoveryUntil ? .45 + .55 * recoveryBlend : 1;
+            if (collisionRecoveryUntil && recoveryT >= 1) collisionRecoveryUntil = 0;
+            const driftBlend = driftResumeAt ? clamp((now - driftResumeAt) / 900, 0, 1) : 1;
+            items.forEach(b => {
+              if (drag && b.id === drag.id) return;
+              const phase = now / 1000 + b.drift;
+              b.x += Math.sin(phase * .73) * .24 * dt * 60 * driftBlend;
+              b.y += Math.cos(phase * .61) * .19 * dt * 60 * driftBlend;
+            });
+            // During a drag, the pointer loop owns collision solving so the
+            // drift loop never performs a second full solve in the same frame.
+            if (!drag) solve(false, recoveryPasses, recoveryScale);
+            else items.forEach(b => constrainBall(b));
+            updateBallTransforms();
+          }
+          driftFrame = requestAnimationFrame(tick);
+        };
+        driftFrame = requestAnimationFrame(tick);
+      }
+      function snapshot() {
+        return new Map(items.map(b => [b.id, { x: b.x, y: b.y, r: b.r }]));
+      }
+      function animateTo(targets, duration = 320, startState = null) {
+        cancelAnimationFrame(motionFrame);
+        const from = startState || snapshot();
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+          items.forEach(b => { const z=targets.get(b.id); if (z) Object.assign(b, z); });
+          isTransitioning = false;
+          render();
+          return;
+        }
+        isTransitioning = true;
+        driftResumeAt = 0;
+        collisionRecoveryUntil = 0;
+        const started = performance.now();
+        const ease = t => 1 - Math.pow(1 - t, 3);
+        const positionEase = t => {
+          if (t >= 1) return 1;
+          const damping = 5, frequency = 9;
+          return 1 - Math.exp(-damping * t) * (Math.cos(frequency * t) + (damping / frequency) * Math.sin(frequency * t));
+        };
+        const tick = now => {
+          const progress = clamp((now - started) / duration, 0, 1), eased = ease(progress), positionEased = positionEase(progress);
+          items.forEach(b => {
+            const a = from.get(b.id) || { x: b.x, y: b.y, r: Math.max(8, b.r * .42) };
+            const z = targets.get(b.id) || { x: b.x, y: b.y, r: b.r };
+            b.x = a.x + (z.x - a.x) * positionEased;
+            b.y = a.y + (z.y - a.y) * positionEased;
+            b.r = a.r + (z.r - a.r) * eased;
+          });
+          render();
+          if (progress < 1) motionFrame = requestAnimationFrame(tick);
+          else {
+            items.forEach(b => { const z=targets.get(b.id); if (z) Object.assign(b, z); });
+            isTransitioning = false;
+            driftResumeAt = performance.now();
+            collisionRecoveryUntil = driftResumeAt + COLLISION_RECOVERY_MS;
+          }
+        };
+        motionFrame = requestAnimationFrame(tick);
+      }
+      function updateRange(id, value, suffix) { const input=$(id), pct=(value-input.min)/(input.max-input.min)*100; input.style.setProperty('--fill',`${pct}%`); $(`${id}Value`).textContent=`${value}${suffix}`; }
+      function updateUI() {
+        updateRange('sizeSpan',params.sizeSpan,' px');
+        updateRange('overlap',params.overlap,'%');
+        updateRange('openness',params.openness,'°');
+        $('sizeSpan').value=params.sizeSpan; $('overlap').value=params.overlap; $('openness').value=params.openness;
+        $('countRange').value=params.count;
+        $('countRange').style.setProperty('--fill', `${(params.count - 3) / 17 * 100}%`);
+      }
+      function reshuffle(redraw=true, announce=true) { shuffle(items).forEach((b,i)=>b.layer=i); if (redraw) render(); if (announce) status('图层已更新','深度顺序随机化'); }
+      function relayout(message='稳定', detail='边界与节点已求解', startState=null, reflow=false) {
+        const from = startState || snapshot();
+        setFunnel();
+        solve(reflow);
+        const targets = snapshot();
+        from.forEach((value, id) => { const b=items.find(item=>item.id===id); if (b) Object.assign(b, value); });
+        animateTo(targets, 1600, from);
+        status(message,detail);
+      }
+      function liveRelayout(id, startState=null, reflow=false) {
+        // Coalesce rapid pointer/input events into one redraw per animation frame.
+        // This keeps the slider responsive while avoiding a backlog of collision solves.
+        cancelAnimationFrame(layoutFrame);
+        layoutFrame = requestAnimationFrame(() => {
+          const from = startState || snapshot();
+          setFunnel();
+          solve(reflow);
+          const targets = snapshot();
+          from.forEach((value, itemId) => { const b=items.find(item=>item.id===itemId); if (b) Object.assign(b, value); });
+          animateTo(targets, 1300, from);
+          status('实时调整中', `${id === 'sizeSpan' ? '尺寸跨度' : id === 'overlap' ? '重叠程度' : '敞口角度'} · 正在求解`);
+        });
+      }
+      // Status copy is intentionally hidden in the reduced interface; retain a
+      // no-op hook so existing interaction flows stay unchanged.
+      function status() {}
+      function screenToView(e) { const p=svg.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+      function viewToScreen(x, y) { const p=svg.createSVGPoint(); p.x=x; p.y=y; return p.matrixTransform(svg.getScreenCTM()); }
+      function interruptMotion() {
+        // A pointer interaction takes priority over an in-flight layout.
+        // Stop the frame that would replace the pressed SVG node underneath
+        // the pointer, while preserving the ball's current interpolated state.
+        cancelAnimationFrame(motionFrame);
+        cancelAnimationFrame(layoutFrame);
+        cancelAnimationFrame(dragFrame);
+        motionFrame = 0;
+        layoutFrame = 0;
+        dragFrame = 0;
+        isTransitioning = false;
+        driftResumeAt = performance.now();
+        collisionRecoveryUntil = 0;
+      }
+      function resizeBurstCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        burstCanvas.width = window.innerWidth * dpr;
+        burstCanvas.height = window.innerHeight * dpr;
+        burstCanvas.style.width = `${window.innerWidth}px`;
+        burstCanvas.style.height = `${window.innerHeight}px`;
+        burstCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      function colorParts(color) {
+        const hex = color.replace('#', '');
+        if (/^[0-9a-f]{6}$/i.test(hex)) return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+        const match = color.match(/\d+(?:\.\d+)?/g);
+        return match && match.length >= 3 ? match.slice(0,3).map(Number) : [212,255,101];
+      }
+      function burstColorVariant(color) {
+        const parts = colorParts(color), r=parts[0]/255, g=parts[1]/255, b=parts[2]/255;
+        const max=Math.max(r,g,b), min=Math.min(r,g,b), chromatic=max!==min;
+        let h=0, s=0, v=max;
+        if (chromatic) { const d=max-min; s=max===0?0:d/max; if(max===r) h=((g-b)/d+(g<b?6:0))/6; else if(max===g) h=((b-r)/d+2)/6; else h=((r-g)/d+4)/6; h=(h+(Math.random()-.5)*6/360+1)%1; s=Math.max(0,Math.min(1,s+.18+Math.random()*.2)); }
+        v=Math.max(.12,Math.min(1,v-.1+(Math.random()*.26-.16)));
+        const i=Math.floor(h*6), f=h*6-i, p=v*(1-s), q=v*(1-f*s), t=v*(1-(1-f)*s); let rr=v,gg=t,bb=p;
+        switch(i%6){case 1:rr=q;gg=v;bb=p;break;case 2:rr=p;gg=v;bb=t;break;case 3:rr=p;gg=q;bb=v;break;case 4:rr=t;gg=p;bb=v;break;case 5:rr=v;gg=p;bb=q;}
+        return `rgb(${Math.round(rr*255)}, ${Math.round(gg*255)}, ${Math.round(bb*255)})`;
+      }
+      function burstColorAlpha(color, alpha) { const p=colorParts(color); return `rgba(${p[0]}, ${p[1]}, ${p[2]}, ${alpha})`; }
+      function playBurst(x, y, color, done) {
+        const particles=[];
+        for(let i=0;i<30;i++) {
+          const angle=Math.random()*Math.PI*2, speed=1.6+Math.random()*4.2;
+          particles.push({ x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed-1.2, r:1.2+Math.random()*3.2, life:.42+Math.random()*.28, spin:Math.random()*Math.PI, color:burstColorVariant(color) });
+        }
+        activeBursts.push({ x, y, color, particles, started:performance.now(), done });
+        if (!burstFrame) burstFrame=requestAnimationFrame(drawBursts);
+      }
+      function drawBursts(now) {
+        burstCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        activeBursts = activeBursts.filter(burst => {
+          const elapsed=(now-burst.started)/1000;
+          const ring=Math.min(elapsed/.55,1);
+          burstCtx.beginPath(); burstCtx.arc(burst.x,burst.y,8+ring*46,0,Math.PI*2); burstCtx.strokeStyle=burst.color; burstCtx.globalAlpha=(1-ring)*.48; burstCtx.lineWidth=1.5; burstCtx.stroke();
+          burst.particles.forEach(p => {
+            const age=elapsed/p.life; if(age>=1)return;
+            p.x+=p.vx; p.y+=p.vy; p.vy+=.11; p.vx*=.985;
+            const alpha=1-age, size=p.r*(.65+alpha*.35);
+            burstCtx.save(); burstCtx.globalAlpha=alpha; burstCtx.shadowColor='rgba(17,17,17,.18)'; burstCtx.shadowBlur=3.5; burstCtx.shadowOffsetX=1; burstCtx.shadowOffsetY=2;
+            const gradient=burstCtx.createRadialGradient(-size*.35,-size*.4,size*.06,0,0,size*1.2); gradient.addColorStop(0,'rgba(255,255,255,.88)'); gradient.addColorStop(.2,p.color); gradient.addColorStop(.72,p.color); gradient.addColorStop(1,burstColorAlpha(p.color,.08));
+            burstCtx.fillStyle=gradient; burstCtx.translate(p.x,p.y); burstCtx.rotate(p.spin+elapsed*4); burstCtx.beginPath(); burstCtx.arc(0,0,size,0,Math.PI*2); burstCtx.fill(); burstCtx.restore();
+          });
+          if(elapsed<.8)return true;
+          if(burst.done)burst.done();
+          return false;
+        });
+        burstCtx.globalAlpha=1;
+        if(activeBursts.length) burstFrame=requestAnimationFrame(drawBursts); else burstFrame=0;
+      }
+      function explodeBall(id) {
+        const source = items.find(b => b.id === id);
+        // A burst is a temporary removal, so allow it at the visible minimum
+        // of three nodes; keep one live node as the hard floor while it respawns.
+        if (!source || items.length <= 1) return;
+        const sourceState = { ...source };
+        const from = snapshot();
+        items = items.filter(b => b.id !== id);
+        compactAfterRemoval();
+        relayout('粒子爆炸','剩余节点正在实时重排', from);
+        reshuffle(false, false);
+        const burstPoint = viewToScreen(sourceState.x, sourceState.y);
+        playBurst(burstPoint.x, burstPoint.y, sourceState.color, () => {
+          const respawnFrom = snapshot();
+          const reborn = makeItem(items.length);
+          reborn.name = sourceState.name; reborn.author = sourceState.author; reborn.itemCount = sourceState.itemCount; reborn.color = sourceState.color; reborn.sizeSeed = sourceState.sizeSeed; reborn.x = sourceState.x; reborn.y = sourceState.y; reborn.r = 7;
+          items.push(reborn);
+          respawnFrom.set(reborn.id, { x: reborn.x, y: reborn.y, r: reborn.r });
+          relayout('节点重生','新节点正在回到场内', respawnFrom, true);
+          reshuffle(false, false);
+        });
+      }
+      function startDrag(e) {
+        interruptMotion();
+        e.preventDefault();
+        const p=screenToView(e), id=e.currentTarget.dataset.id;
+        drag={ id, pointer:e.pointerId, startX:p.x, startY:p.y, moved:false };
+        e.currentTarget.setPointerCapture(e.pointerId); e.currentTarget.classList.add('is-dragging'); status('观察中','拖动节点，边界会实时约束');
+      }
+      function applyPendingDrag() {
+        if (!drag || !drag.pending) return;
+        const b = items.find(x => x.id === drag.id);
+        if (!b) return;
+        const p = drag.pending;
+        b.x = p.x; b.y = p.y;
+        // Keep the original symmetric collision response, but use a small
+        // fixed pass budget while the pointer is moving.
+        solve(false, 8);
+        const g = ballNodes.get(b.id);
+        if (g) g.classList.add('is-dragging');
+        updateBallTransforms();
+        drag.pending = null;
+      }
+      function queueDrag(e) {
+        if (!drag) return;
+        const p = screenToView(e);
+        if (Math.hypot(p.x-drag.startX,p.y-drag.startY)>7) drag.moved=true;
+        drag.pending = p;
+        if (!dragFrame) dragFrame = requestAnimationFrame(() => { dragFrame = 0; applyPendingDrag(); });
+      }
+      svg.addEventListener('pointermove', queueDrag);
+      svg.addEventListener('pointerup', () => {
+        if (!drag) return;
+        if (dragFrame) { cancelAnimationFrame(dragFrame); dragFrame = 0; applyPendingDrag(); }
+        const selected=drag.id, clicked=!drag.moved, from=snapshot();
+        drag=null;
+        if (clicked) explodeBall(selected);
+        else { relayout('正在吸附','按当前参数重新收拢节点', from, true); }
+      });
+      svg.addEventListener('pointercancel', () => { cancelAnimationFrame(dragFrame); dragFrame = 0; drag=null; render(); });
+      function add() {
+        if(items.length>=20) return;
+        const from = snapshot();
+        params.count=items.length+1;
+        items.push(makeItem(items.length));
+        relayout('已新增节点','节点进入场内并重新求解', from);
+        reshuffle(false, false);
+      }
+      function remove() {
+        if(items.length<=3) return;
+        const from = snapshot();
+        params.count=items.length-1;
+        items.pop();
+        compactAfterRemoval();
+        relayout('已移除节点','剩余节点已向底部收拢并重新求解', from);
+        reshuffle(false, false);
+      }
+      function setCount(nextCount) {
+        nextCount = clamp(+nextCount, 3, 20);
+        if (nextCount === items.length) return;
+        const from = snapshot();
+        const wasRemoval = nextCount < items.length;
+        params.count = nextCount;
+        if (wasRemoval) {
+          items.splice(nextCount);
+          compactAfterRemoval();
+        } else {
+          while (items.length < nextCount) items.push(makeItem(items.length));
+        }
+        relayout(wasRemoval ? '已减少节点' : '已新增节点', wasRemoval ? '剩余节点已收拢并重新求解' : '新节点已进入场内并重新求解', from);
+        reshuffle(false, false);
+      }
+      ['sizeSpan','overlap','openness'].forEach(id => {
+        $(id).addEventListener('input', e => {
+          const nextValue = +e.target.value;
+          const from = snapshot();
+          params[id] = nextValue;
+          updateUI();
+          liveRelayout(id, from, id === 'sizeSpan' || id === 'overlap');
+        });
+        $(id).addEventListener('change', () => status('稳定', '参数已应用 · 边界与节点已求解'));
+      });
+      $('countRange').addEventListener('input', e => setCount(e.target.value));
+      $('shuffleBtn').addEventListener('click',()=>{ const from=snapshot(); items.forEach((b,i)=>{ b.x=rand(200,660); b.y=rand(150,500); }); relayout('已重新生成','随机位置与图层顺序已更新', from, true); reshuffle(false, false); });
+      $('orderBtn').addEventListener('click',reshuffle);
+      $('resetBtn').addEventListener('click',()=>{ params={...defaults}; updateUI(); seedItems(true); status('已恢复默认','参数与布局已重置'); });
+      window.addEventListener('keydown',e=>{ if(e.target.matches('input,button')) return; if(e.key==='+') add(); if(e.key==='-') remove(); if(e.key.toLowerCase()==='r') { const from=snapshot(); items.forEach((b,i)=>{b.x=rand(200,660);b.y=rand(150,500)}); relayout('已重新生成','按下 R 触发随机布局', from, true); reshuffle(false, false); } });
+      window.addEventListener('resize', resizeBurstCanvas);
+      resizeBurstCanvas();
+      setFunnel(); updateUI(); seedItems(true); startDrift();
+    })();
+  </script>
+</body>
+</html>
