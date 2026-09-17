@@ -65,8 +65,9 @@
     #funnelSvg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
     #burstCanvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 25; pointer-events: none; }
     /* The funnel remains a hard geometric constraint, but its outline is intentionally invisible. */
-    .funnel-frame { fill: transparent; stroke: transparent; stroke-width: 0; vector-effect: non-scaling-stroke; }
-    .funnel-glow, .funnel-rim, .funnel-floor { fill: none; stroke: transparent; stroke-width: 0; }
+    .funnel-frame { fill: none; stroke: rgba(17,17,17,.16); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 2 5; }
+    .funnel-glow { fill: none; stroke: transparent; stroke-width: 0; }
+    .funnel-rim, .funnel-floor { fill: none; stroke: rgba(17,17,17,.12); stroke-width: 1; vector-effect: non-scaling-stroke; }
     .funnel-tick { stroke: transparent; stroke-width: 0; }
     .ball { cursor: grab; transition: opacity .2s ease; }
     .ball:active { cursor: grabbing; }
@@ -287,6 +288,7 @@
       }
       function makeItem(i) { const data = demoBallData[i % demoBallData.length]; return { id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`, name: data.author, author: data.author, itemCount: data.itemCount, sizeSeed: seedFor(i), r: radiusFor(data), x: rand(250, 610), y: rand(180, 470), color: palette[i % palette.length], layer: Math.random(), drift: rand(0, Math.PI * 2) }; }
       function seedItems(reflow = false) { items = Array.from({ length: params.count }, (_, i) => makeItem(i)); solve(reflow); render(); }
+      function compositionY(f) { return f.topY + (f.floorY - f.topY) * .64; }
       function solve(reflow = false, maxPasses = 240, collisionScale = 1) {
         const f = funnel();
         items.forEach(b => { b.r = radiusFor(b); constrainBall(b, f); });
@@ -296,7 +298,7 @@
             // Recalculate the composition from the new radii instead of
             // preserving legal-but-now-too-loose coordinates. The collision
             // pass below uses the new radii and current overlap value.
-            const targetY = f.floorY - 165;
+            const targetY = compositionY(f);
             for (const b of items) {
               b.x += (f.center - b.x) * .018;
               b.y += (targetY - b.y) * .018;
@@ -314,10 +316,10 @@
       }
       function compactAfterRemoval() {
         // Removing a node creates room. Re-seed the remaining composition
-        // toward the funnel's lower centre so the change is spatially legible,
+        // toward the funnel's balanced centre so the change is spatially legible,
         // then solve boundaries and pairwise repulsion again.
         const f = funnel();
-        const targetY = f.floorY - 165;
+        const targetY = compositionY(f);
         const xFactor = .62;
         const yFactor = .66;
         items.forEach(b => {

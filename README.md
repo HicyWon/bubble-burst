@@ -1,5 +1,7 @@
 # Bubble Burst
 
+**Live demo:** [https://hicywon.github.io/bubble-burst/](https://hicywon.github.io/bubble-burst/)
+
 A data-driven bubble layout that drifts, collides, bursts, and calmly gathers itself back together.
 
 Give each object a name and a number, and the number becomes its visual weight: larger values create larger bubbles and more prominent labels. Drag them, nudge them, pop them, and watch the little group make room, reflow, and grow back.
