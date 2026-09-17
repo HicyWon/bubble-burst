@@ -54,9 +54,9 @@ Bubble Burst 适合放在团队门户、贡献度排名、项目协作墙、成�
 
 ```js
 [
-  { author: 'KiKi', itemCount: 8 },
+  { author: 'Miko', itemCount: 8 },
   { author: 'Hicy', itemCount: 4 },
-  { author: 'Tiya', itemCount: 3 }
+  { author: 'Yuna', itemCount: 3 }
 ]
 ```
 
