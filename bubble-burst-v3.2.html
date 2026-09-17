@@ -84,7 +84,7 @@
 
     .control-panel { display: grid; grid-template-columns: 1fr; transform: translateY(28px); }
     .action-row { grid-column: 1 / -1; }
-    .control-group { padding: 40px 0 19px; border-bottom: 1px solid var(--line); }
+    .control-group { padding: 40px 0 19px; border-bottom: 0; }
     .control-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
     .control-label { letter-spacing: .05em; font-size: 11px; }
     .control-value { font-weight: 900; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -118,18 +118,18 @@
       <div>
         <div class="eyebrow">Layout instrument / 02</div>
         <h1>Bubble<br>Burst</h1>
-        <p class="dek">在一个有边界的容器里，让标签球体自然找到自己的位置。可以重叠，但不会彼此穿透。</p>
+        <p class="dek">Let labeled bubbles find their natural places inside a bounded space. They can overlap, but they never pass through one another.</p>
       </div>
       <div class="header-note"><strong>V3.2 · Hicy</strong></div>
     </header>
 
-    <section class="workspace" aria-label="Bubble Burst 交互控件">
+    <section class="workspace" aria-label="Bubble Burst interactive control">
       <section class="stage-card">
-        <div class="stage-top"><span class="micro-label">playground</span><span class="live-pill">布局实时更新</span></div>
+        <div class="stage-top"><span class="micro-label">playground</span><span class="live-pill">Live layout</span></div>
         <div class="stage" id="stage">
           <svg id="funnelSvg" viewBox="0 0 860 620" role="img" aria-labelledby="stageTitle stageDesc">
-            <title id="stageTitle">漏斗容器中的随机球体</title>
-            <desc id="stageDesc">球体根据尺寸、重叠度和漏斗开口参数自动布局，可以拖拽。</desc>
+            <title id="stageTitle">Random bubbles inside a funnel</title>
+            <desc id="stageDesc">Bubbles arrange themselves from size, overlap, and funnel openness parameters, and can be dragged.</desc>
             <defs>
               <clipPath id="funnelClip"><path id="clipPathShape" d="M 72 52 L 788 52 L 592 566 L 268 566 Z" /></clipPath>
               <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#111" flood-opacity=".10"/></filter>
@@ -148,32 +148,32 @@
         <div class="footer-note"><span>Hint: <kbd>+</kbd> and <kbd>−</kbd> adjust nodes</span><span>Each change reshuffles the depth order</span></div>
       </section>
 
-      <aside class="control-panel" aria-label="布局控制">
+      <aside class="control-panel" aria-label="Layout controls">
         <div class="control-group">
-          <div class="control-head"><label class="control-label" for="countRange">球体数量</label><output id="countValue" class="control-value">10 / 20</output></div>
-          <p class="control-help">滑动数量，剩余球体会自动收拢并重新排列。</p>
+          <div class="control-head"><label class="control-label" for="countRange">Bubble count</label><output id="countValue" class="control-value">10 / 20</output></div>
+          <p class="control-help">Adjust the count; remaining bubbles regroup automatically.</p>
           <input id="countRange" type="range" min="3" max="20" value="10" step="1"><div class="range-ends"><span>03</span><span>20</span></div>
         </div>
 
         <div class="control-group">
-          <div class="control-head"><label class="control-label" for="sizeSpan">球体尺寸跨度</label><output id="sizeSpanValue" class="control-value" for="sizeSpan">100 px</output></div>
-          <p class="control-help">控制最大球体与最小球体之间的差距。</p>
-          <input id="sizeSpan" type="range" min="0" max="150" value="100" step="1"><div class="range-ends"><span>更均匀</span><span>更戏剧化</span></div>
+          <div class="control-head"><label class="control-label" for="sizeSpan">Size span</label><output id="sizeSpanValue" class="control-value" for="sizeSpan">100 px</output></div>
+          <p class="control-help">Set the difference between the smallest and largest bubbles.</p>
+          <input id="sizeSpan" type="range" min="0" max="150" value="100" step="1"><div class="range-ends"><span>More even</span><span>More dramatic</span></div>
         </div>
 
         <div class="control-group">
-          <div class="control-head"><label class="control-label" for="overlap">球体重叠程度</label><output id="overlapValue" class="control-value" for="overlap">20%</output></div>
-          <p class="control-help">允许圆形靠得更近，并同步收紧场内布局。</p>
-          <input id="overlap" type="range" min="0" max="50" value="20" step="1"><div class="range-ends"><span>不重叠</span><span>更紧密</span></div>
+          <div class="control-head"><label class="control-label" for="overlap">Overlap</label><output id="overlapValue" class="control-value" for="overlap">20%</output></div>
+          <p class="control-help">Let bubbles gather more tightly and overlap.</p>
+          <input id="overlap" type="range" min="0" max="50" value="20" step="1"><div class="range-ends"><span>No overlap</span><span>Tighter</span></div>
         </div>
 
         <div class="control-group">
-          <div class="control-head"><label class="control-label" for="openness">漏斗敞口角度</label><output id="opennessValue" class="control-value" for="openness">50°</output></div>
-          <p class="control-help">调大上沿宽度；调小则让底部更快收束。</p>
-          <input id="openness" type="range" min="20" max="62" value="50" step="1"><div class="range-ends"><span>收束</span><span>开阔</span></div>
+          <div class="control-head"><label class="control-label" for="openness">Funnel openness</label><output id="opennessValue" class="control-value" for="openness">50°</output></div>
+          <p class="control-help">Widen the top; lower values taper the base faster.</p>
+          <input id="openness" type="range" min="20" max="62" value="50" step="1"><div class="range-ends"><span>Narrow</span><span>Open</span></div>
         </div>
 
-        <div class="action-row"><button type="button" class="action-button primary" id="shuffleBtn"><span class="button-icon">↻</span> 重新生成布局</button><button type="button" class="action-button" id="orderBtn">刷新图层顺序</button><button type="button" class="action-button" id="resetBtn">恢复默认</button></div>
+        <div class="action-row"><button type="button" class="action-button primary" id="shuffleBtn"><span class="button-icon">↻</span> Regenerate layout</button><button type="button" class="action-button" id="orderBtn">Refresh layer order</button><button type="button" class="action-button" id="resetBtn">Restore defaults</button></div>
       </aside>
     </section>
   </main>
@@ -337,7 +337,7 @@
           const contentScale = b.r / referenceMaxRadius;
           const content=document.createElementNS(NS,'g'); content.classList.add('ball-content'); content.setAttribute('transform',`scale(${contentScale})`);
           const txt=document.createElementNS(NS,'text'); txt.style.fontSize='24px'; txt.setAttribute('y', -5); txt.textContent=b.author || b.name;
-          const idx=document.createElementNS(NS,'text'); idx.classList.add('ball-index'); idx.style.fontSize='10px'; idx.setAttribute('y', 17); idx.textContent=`${b.itemCount} 项`;
+          const idx=document.createElementNS(NS,'text'); idx.classList.add('ball-index'); idx.style.fontSize='10px'; idx.setAttribute('y', 17); idx.textContent=`${b.itemCount} items`;
           content.append(txt,idx); g.append(c,shine,content); g.addEventListener('pointerdown', startDrag); ballsEl.appendChild(g); ballNodes.set(b.id, g);
         });
         $('captionCount').textContent = `${String(items.length).padStart(2,'0')} nodes in orbit`;
